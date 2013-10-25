@@ -2,10 +2,12 @@ package com.tjerkw.slideexpandable.library;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
+import android.widget.Checkable;
 import android.widget.LinearLayout;
 import android.widget.ListAdapter;
 
@@ -54,8 +56,19 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 	 */
 	private final SparseIntArray viewHeights = new SparseIntArray(10);
 
+	public interface SlideAnimationListener{
+		public void slideAnimationStarted(int position, int type);
+		public void slideAnimationDone(int position, int type);
+	};
+	
+	private SlideAnimationListener mListener;
+	
 	public AbstractSlideExpandableListAdapter(ListAdapter wrapped) {
 		super(wrapped);
+	}
+	
+	public void setListener(SlideAnimationListener listener){
+		mListener = listener;
 	}
 
 	@Override
@@ -144,19 +157,22 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 
 
 	private void enableFor(final View button, final View target, final int position) {
-		if(target == lastOpen && position!=lastOpenPosition) {
-			// lastOpen is recycled, so its reference is false
-			lastOpen = null;
-		}
+		Log.d(getClass().getSimpleName(), "[enableFor] check1 lastOpenPosition:"+lastOpenPosition + " lastOpen:"+lastOpen + " target:"+target);
+//		if(target == lastOpen && position!=lastOpenPosition) {
+//			// lastOpen is recycled, so its reference is false
+//			lastOpen = null;
+//		}
 		if(position == lastOpenPosition) {
 			// re reference to the last view
 			// so when can animate it when collapsed
 			lastOpen = target;
 		}
+		Log.d(getClass().getSimpleName(), "[enableFor] check2 lastOpenPosition:"+lastOpenPosition + " lastOpen:"+lastOpen + " target:"+target);
 		int height = viewHeights.get(position, -1);
 		if(height == -1) {
 			viewHeights.put(position, target.getMeasuredHeight());
-			updateExpandable(target,position);
+			updateExpandable(target, position);
+			
 		} else {
 			updateExpandable(target, position);
 		}
@@ -165,6 +181,8 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 			@Override
 			public void onClick(final View view) {
 
+					
+					
 				Animation a = target.getAnimation();
 
 				if (a != null && a.hasStarted() && !a.hasEnded()) {
@@ -193,17 +211,24 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 							: ExpandCollapseAnimation.EXPAND;
 
 					// remember the state
-					if (type == ExpandCollapseAnimation.EXPAND) {
+					boolean isExpanding = (type == ExpandCollapseAnimation.EXPAND);
+					if (isExpanding) {
 						openItems.set(position, true);
+
 					} else {
 						openItems.set(position, false);
+
 					}
+					
+					if(button instanceof Checkable){
+						((Checkable) button).setChecked(isExpanding);
+					}
+					
 					// check if we need to collapse a different view
 					if (type == ExpandCollapseAnimation.EXPAND) {
 						if (lastOpenPosition != -1 && lastOpenPosition != position) {
-							if (lastOpen != null) {
-								animateView(lastOpen, ExpandCollapseAnimation.COLLAPSE);
-							}
+							Log.d(getClass().getSimpleName(), "[enableFor] check3 lastOpenPosition:"+lastOpenPosition + " lastOpen:"+lastOpen + " target:"+target);
+							collapseLastOpen();
 							openItems.set(lastOpenPosition, false);
 						}
 						lastOpen = target;
@@ -211,7 +236,7 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 					} else if (lastOpenPosition == position) {
 						lastOpenPosition = -1;
 					}
-					animateView(target, type);
+					animateView(target, type, position);
 				}
 			}
 		});
@@ -223,6 +248,7 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 		if(openItems.get(position)) {
 			target.setVisibility(View.VISIBLE);
 			params.bottomMargin = 0;
+
 		} else {
 			target.setVisibility(View.GONE);
 			params.bottomMargin = 0-viewHeights.get(position);
@@ -235,11 +261,36 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 	 * @param type the animation type, either ExpandCollapseAnimation.COLLAPSE
 	 *			 or ExpandCollapseAnimation.EXPAND
 	 */
-	private void animateView(final View target, final int type) {
+	private void animateView(final View target, final int type, final int position) {
+		Log.d(getClass().getSimpleName(), "[animateView] should animate position:"+position + " type:"+type );
 		Animation anim = new ExpandCollapseAnimation(
 				target,
 				type
 		);
+		anim.setAnimationListener(new Animation.AnimationListener() {
+			
+			@Override
+			public void onAnimationStart(Animation animation) {
+				if(mListener!=null){
+					mListener.slideAnimationStarted(position, type);
+				}
+				
+			}
+			
+			@Override
+			public void onAnimationRepeat(Animation animation) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onAnimationEnd(Animation animation) {
+				if(mListener!=null){
+					mListener.slideAnimationDone(position, type);
+				}
+				
+			}
+		});
 		anim.setDuration(getAnimationDuration());
 		target.startAnimation(anim);
 	}
@@ -255,8 +306,13 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 		if(isAnyItemExpanded()) {
 			// if visible animate it out
 			if(lastOpen != null) {
-				animateView(lastOpen, ExpandCollapseAnimation.COLLAPSE);
+				animateView(lastOpen, ExpandCollapseAnimation.COLLAPSE, lastOpenPosition);
+				View lastOpenButton = getExpandToggleButton((View)lastOpen.getParent());
+				if(lastOpenButton instanceof Checkable){
+					((Checkable) lastOpenButton).setChecked(false);
+				}
 			}
+			
 			openItems.set(lastOpenPosition, false);
 			lastOpenPosition = -1;
 			return true;
