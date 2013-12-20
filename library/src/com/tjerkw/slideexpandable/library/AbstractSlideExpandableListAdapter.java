@@ -6,6 +6,7 @@ import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.MarginLayoutParams;
 import android.view.animation.Animation;
 import android.widget.Checkable;
 import android.widget.LinearLayout;
@@ -244,7 +245,7 @@ public abstract class AbstractSlideExpandableListAdapter extends WrapperListAdap
 
 	private void updateExpandable(View target, int position) {
 
-		final LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)target.getLayoutParams();
+		final MarginLayoutParams params = (MarginLayoutParams)target.getLayoutParams();
 		if(openItems.get(position)) {
 			target.setVisibility(View.VISIBLE);
 			params.bottomMargin = 0;
