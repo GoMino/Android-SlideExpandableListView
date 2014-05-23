@@ -41,7 +41,7 @@ public class ExpandCollapseAnimation extends Animation {
 
 			mLayoutParams.bottomMargin = 0;
 		}
-		view.setVisibility(View.VISIBLE);
+		mAnimatedView.setVisibility(View.VISIBLE);
 	}
 
 	@Override
@@ -54,17 +54,19 @@ public class ExpandCollapseAnimation extends Animation {
 			} else {
 				mLayoutParams.bottomMargin = - (int) (mEndHeight * interpolatedTime);
 			}
-			Log.d("ExpandCollapseAnimation", "anim height " + mLayoutParams.bottomMargin);
-			mAnimatedView.requestLayout();
+//			Log.d("ExpandCollapseAnimation", "anim height " + mLayoutParams.bottomMargin);
+
 		} else {
 			if(mType == EXPAND) {
 				mLayoutParams.bottomMargin = 0;
-				mAnimatedView.requestLayout();
 			} else {
 				mLayoutParams.bottomMargin = -mEndHeight;
 				mAnimatedView.setVisibility(View.GONE);
-				mAnimatedView.requestLayout();
+				
 			}
+//			Log.d("ExpandCollapseAnimation", "bottomMargin:"+mLayoutParams.bottomMargin+" mEndHeight:" + mEndHeight);	
 		}
+//		mAnimatedView.setLayoutParams(mLayoutParams);
+		mAnimatedView.requestLayout();
 	}
 }
